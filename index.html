@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thesis Memorization Game</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+  body{background:#0a0a1a;color:#fff;padding:14px}
+  .wrap{max-width:950px;margin:auto}
+  .header{text-align:center;background:linear-gradient(135deg,#ffcc00,#ff00ff,#00ffcc);color:#000;padding:20px;border-radius:18px}
+  .header h1{font-size:32px;letter-spacing:1px}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+  .card{flex:1;min-width:130px;background:#161d3a;border:1px solid #333;border-radius:14px;padding:12px;text-align:center}
+  .card b{font-size:22px;color:#ffe600}
+  .timer{font-size:34px;font-weight:900;color:#ffcc00}
+  button{padding:11px 15px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;margin:4px}
+  .btn{background:#ffe600}.btn2{background:#00ffcc}.btn3{background:#ff3b6b;color:#fff}.btn4{background:#fff}.btn5{background:#7a5cff;color:#fff}
+  input{width:100%;padding:14px;border-radius:12px;border:2px solid #ffe600;background:#222;color:#fff;font-size:16px;margin:10px 0;outline:none}
+  input:focus{border-color:#00ffcc;box-shadow:0 0 12px #00ffcc}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+  .tabs button.active{background:#ffe600;color:#000}
+  .card-box{background:#121833;border-radius:14px;padding:16px;margin:12px 0;border:1px solid #2a3555}
+  .card-box.active{border:2px solid #ffe600;box-shadow:0 0 14px #ffe600}
+  .yellow{background:#ffe600;color:#000;padding:2px 6px;border-radius:6px;font-weight:bold}
+  .qbox{background:#1c2747;padding:18px;border-radius:16px;margin:14px 0}
+  .word{display:inline-block;background:#1e2a4a;padding:5px 9px;border-radius:8px;margin:3px}
+  .word.done{background:#00ff88;color:#000}.word.wrong{background:#ff3b6b;color:#fff}
+  .progress{height:12px;background:#222;border-radius:10px;overflow:hidden;margin:8px 0}
+  .fill{height:100%;background:linear-gradient(90deg,#00ffcc,#ffe600);width:0%;transition:width .3s}
+  .mode-tag{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:bold;background:#ffe600;color:#000}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>🎮 THESIS MEMORIZATION GAME 🎮</h1>
+    <p><b>Factors That Influence Students Using AI for Illustration and Design</b></p>
+    <p>Ian Patrick C. Batungbacal | 2021-1-02203 | AB Multimedia Arts | LPU</p>
+    <button class="btn2" onclick="speak('Goodluck for your thesis defense! You can do this! Kabisado mo na lahat ng yellow highlighted texts!')">🔊 PLAY INTRO AUDIO - GOODLUCK!</button>
+  </div>
+
+  <div class="stats">
+    <div class="card">⏰ TIMER<br><div class="timer" id="timer">30:00</div><span id="phase">REVIEW MODE</span></div>
+    <div class="card">⭐ POINTS<br><b id="points">0</b></div>
+    <div class="card">✅ CORRECT<br><b id="correct" style="color:#00ff88">0</b></div>
+    <div class="card">❌ WRONG<br><b id="wrong" style="color:#ff3b6b">0</b></div>
+    <div class="card">📊 PROGRESS<br><b id="prog">0 / 53</b></div>
+  </div>
+
+  <div style="text-align:center">
+    <button class="btn" onclick="startReview()">▶ START REVIEW - 30 MINS</button>
+    <button class="btn2" onclick="startQuiz()">🔥 START MEMORIZATION - 15 MINS</button>
+    <button class="btn3" onclick="resetGame()">↺ RESET</button>
+    <button class="btn4" onclick="speakCurrent()">🔊 SPEAK CURRENT</button>
+  </div>
+  <div class="progress"><div class="fill" id="fill"></div></div>
+
+  <div class="tabs">
+    <button class="btn5 active" onclick="setTab('slides',this)">📊 19 SLIDES</button>
+    <button class="btn5" onclick="setTab('qa',this)">❓ 53 Q&A PANEL</button>
+    <button class="btn5" onclick="setTab('survey',this)">📝 30 SURVEY QUESTIONS</button>
+  </div>
+
+  <div id="reviewBox"></div>
+
+  <div id="quizBox" style="display:none">
+    <div class="qbox">
+      <span class="mode-tag" id="qMode">PANEL SCRAMBLED QUESTION</span>
+      <h3 id="qTitle" style="margin-top:8px">Question 1 / 53</h3>
+      <p style="opacity:.7">Type mo sagot. NO PERIOD. Space at Letters lang. Kapag natapos una, sunod pangalawa, pangatlo...</p>
+      <p id="qPrompt" style="font-size:20px;margin:12px 0"></p>
+      <input id="answerInput" placeholder="Type mo dito... walang period, space at letters lang" autocomplete="off" oninput="speakTyping(this.value)">
+      <button class="btn" onclick="checkAnswer()">✅ SUBMIT</button>
+      <button class="btn2" onclick="speakQuestion()">🔊 HEAR QUESTION + ANSWER</button>
+      <button class="btn3" onclick="skipQ()">⏭ SKIP -20 PTS</button>
+      <div id="feedback"></div>
+      <div id="wordCheck" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div id="finalBox" style="display:none;background:#121833;padding:20px;border-radius:16px;text-align:center"></div>
+</div>
+
+<script>
+// ============ COMPLETE DATA ============
+const SLIDES = [
+  {q:"Opening - Slide 1", a:"Good morning to our dearest panelist may I present to you my thesis slideshow preview for my topic entitled Factors that influence students using artificial intelligence for illustration and design then later on let us show you my discussion on this thesis defense next slide please", key:["Good morning","dearest panelist","Factors that influence students using artificial intelligence for illustration and design"]},
+  {q:"Introduction - Slide 2", a:"AI helps students accelerate creative work but this study examines its full impact on their skills opportunities and risks next slide please", key:["accelerate creative work","skills opportunities and risks"]},
+  {q:"AI Tools - Slide 3", a:"For the AI tools evaluated in this study ChatGPT is used for generating images ideas and prompts Google Gemini is used for generating images and creative ideas Adobe Firefly is used for generating and editing images And Canva AI is used for creating posters presentations and graphic designs next slide please", key:["ChatGPT","Google Gemini","Adobe Firefly","Canva AI"]},
+  {q:"Background Stats - Slide 4", a:"according to recent reports 424 percent of Filipino internet users and 83 percent of Filipino students use AI ASEAN Foundation 2026 Thus this study promotes responsible AI use examining how it impacts students creativity originality and design skills next slide please", key:["424","83","ASEAN Foundation 2026","responsible AI use"]},
+  {q:"Objectives - Slide 5", a:"For the objectives to identify the factors relationships benefits and disadvantages of AI use next slide please", key:["factors relationships benefits and disadvantages"]},
+  {q:"Research Questions - Slide 6", a:"The study is guided by questions on AI usage its impacts and how students balance it with their manual skills next slide please", key:["AI usage","manual skills"]},
+  {q:"Scope - Slide 7", a:"For the scope and limitations 30 LPU Multimedia Arts students using simple regression next slide please", key:["30 LPU Multimedia Arts","simple regression"]},
+  {q:"Tools Analysis - Slide 8", a:"For the tools evaluated we analyzed ChatGPT for brainstorming Gemini for reasoning and editing Canva AI for layouts and Adobe Firefly for commercial safe professional design next slide please", key:["brainstorming","reasoning and editing","layouts","commercial safe"]},
+  {q:"TAM Framework - Slide 9", a:"For the theoretical framework TAM focuses on perceived usefulness and perceived ease of use next slide please", key:["TAM","perceived usefulness","perceived ease of use"]},
+  {q:"Questionnaire - Slide 10", a:"The questionnaire consists of 30 items across 10 thematic areas next slide please", key:["30 items","10 thematic areas"]},
+  {q:"Model - Slide 11", a:"The model tests these 9 variables leading to AI use next slide please", key:["9 variables"]},
+  {q:"Demographics - Slide 12", a:"For the demographics 26 MMA student respondents consisting of 12 males and 14 females next slide please", key:["26 MMA","12 males","14 females"]},
+  {q:"Findings Usage - Slide 13", a:"Findings show frequent AI use for creative tasks study content and devices next slide please", key:["frequent AI use"]},
+  {q:"Findings Proficiency - Slide 14", a:"Results show proficiency preferred tools and impact on creativity next slide please", key:["proficiency","preferred tools"]},
+  {q:"Findings Originality - Slide 15", a:"Results cover originality proficiency motivation and frequency of use next slide please", key:["originality","motivation"]},
+  {q:"Findings Hours - Slide 16", a:"Results also show daily hours spent and years of experience using AI next slide please", key:["daily hours","years of experience"]},
+  {q:"Regression - Slide 17", a:"24 variables show a significant relationship with intention to use AI while 5 variables show no significant relationship next slide please", key:["24 variables","significant relationship","5 variables"]},
+  {q:"Conclusion - Slide 18", a:"In conclusion AI may improve creativity and productivity next slide please", key:["improve creativity and productivity"]},
+  {q:"Recommendations Closing - Slide 19", a:"For recommendations use AI responsibly and maintain creativity To be continued next slide please Any further suggestions reviews comments feedback violent reactions etc If none you there panelists you may now be allowed to answer my thesis questions Thats the end of my defense thank you", key:["use AI responsibly","maintain creativity","Thats the end of my defense thank you"]},
+];
+
+const QA = [
+  {q:"What is your thesis title?", a:"Factors that influence students using artificial intelligence for illustration and design", key:["Factors that influence students"]},
+  {q:"What is your study about?", a:"My study examines how 9 key variables affect the behavioral intention of 30 LPU Multimedia Arts students to use AI for illustration and design", key:["9 key variables","behavioral intention","30 LPU"]},
+  {q:"What are the 9 variables?", a:"Perceived Usefulness and Productivity Creativity and Idea Generation Learning Skills and Confidence Design Assistance and Quality Social Influence Accessibility and Facilitating Conditions Traditional Freehand Design Preference Ethical Transparent Use and Concerns and Risks", key:["Perceived Usefulness","Creativity","Learning","Design Assistance","Social Influence"]},
+  {q:"What is AI?", a:"Artificial Intelligence is technology that can generate ideas images and designs to assist students in creative work", key:["Artificial Intelligence"]},
+  {q:"What is illustration?", a:"Illustration is visual art used to communicate ideas stories and concepts through drawing and design", key:["visual art"]},
+  {q:"What is design?", a:"Design is the process of creating layouts posters and visual materials that are functional and aesthetic", key:["layouts"]},
+  {q:"What is ChatGPT used for?", a:"ChatGPT is used for brainstorming text prompts and general ideation and generating images ideas and prompts", key:["ChatGPT","brainstorming"]},
+  {q:"What is Google Gemini used for?", a:"Google Gemini is used for creative reasoning text to image generation and ideation", key:["Google Gemini","creative reasoning"]},
+  {q:"What is Adobe Firefly used for?", a:"Adobe Firefly is used for commercial safe professional design and image editing and generative fill", key:["Adobe Firefly","commercial safe"]},
+  {q:"What is Canva AI used for?", a:"Canva AI is used for final layout creation presentations and posters", key:["Canva AI","layout"]},
+  {q:"What is TAM?", a:"TAM is Technology Acceptance Model focusing on perceived usefulness and perceived ease of use", key:["Technology Acceptance Model","perceived usefulness","perceived ease of use"]},
+  {q:"What is perceived usefulness?", a:"Perceived usefulness means students believe AI helps them create designs more easily and faster", key:["perceived usefulness"]},
+  {q:"What is perceived ease of use?", a:"Perceived ease of use means students find AI convenient and easy to access for design tasks", key:["perceived ease of use"]},
+  {q:"Who are your respondents?", a:"My respondents are 30 LPU Multimedia Arts students with 26 actual respondents consisting of 12 males and 14 females", key:["30 LPU","26","12 males","14 females"]},
+  {q:"What sampling did you use?", a:"I used simple regression and survey questionnaire for Multimedia Arts students", key:["simple regression"]},
+  {q:"What is your research design?", a:"My research uses quantitative descriptive and correlational design using survey and simple regression", key:["quantitative"]},
+  {q:"What is your questionnaire scale?", a:"My questionnaire uses 5 point Likert scale from 1 Strongly Disagree to 5 Strongly Agree across 30 statements", key:["5 point Likert","30 statements"]},
+  {q:"What are the themes of your questionnaire?", a:"The themes are UP CR LS DQ SI AF TF ET and Concerns and Risks", key:["UP","CR","LS","DQ","SI","AF"]},
+  {q:"What is UP?", a:"UP is Perceived Usefulness and Productivity like easier designs time saving and speed", key:["Perceived Usefulness"]},
+  {q:"What is CR or CI?", a:"CR is Creativity and Idea Generation like new ideas experimentation and originality concerns", key:["Creativity and Idea Generation"]},
+  {q:"What is LS?", a:"LS is Learning Skills and Confidence like skill building digital literacy and independent learning", key:["Learning Skills and Confidence"]},
+  {q:"What is DQ?", a:"DQ is Design Assistance and Quality like layout selection and design quality", key:["Design Assistance and Quality"]},
+  {q:"What is SI?", a:"SI is Social Influence like classmates influenced my decision to use AI", key:["Social Influence"]},
+  {q:"What is AF?", a:"AF is Accessibility and Facilitating Conditions like device availability and convenience", key:["Accessibility"]},
+  {q:"What is TF?", a:"TF is Traditional Freehand Design Preference like I prefer freehand drawing", key:["Traditional Freehand"]},
+  {q:"What is ET?", a:"ET is Ethical Transparent Use like I always disclose the use of AI in my tasks", key:["Ethical Transparent Use"]},
+  {q:"What are your main findings?", a:"AI dramatically improves efficiency productivity and idea generation but carries risks like overdependence and loss of personal originality", key:["improves efficiency","overdependence","originality"]},
+  {q:"How many variables are significant?", a:"24 variables show a statistically significant relationship with intention to use AI while 5 variables show no significant relationship", key:["24 variables","significant","5 variables"]},
+  {q:"What is your conclusion?", a:"Human creativity and critical thinking remain paramount AI serves as complementary design assistant rather than replacement for freehand and traditional artistic skills", key:["Human creativity","complementary design assistant"]},
+  {q:"What are your recommendations?", a:"Use AI responsibly maintain creativity disclose AI use and balance AI with manual skills", key:["Use AI responsibly","maintain creativity"]},
+  {q:"Why is your study important to students?", a:"My study helps students use AI responsibly to improve creativity productivity and digital literacy without losing originality", key:["responsibly"]},
+  {q:"Why is your study important to teachers?", a:"My study helps teachers understand how students use AI and how to guide them ethically", key:["teachers"]},
+  {q:"Why is your study important to school?", a:"My study helps school create policies for responsible AI use in illustration and design", key:["school"]},
+  {q:"What is originality concern?", a:"Originality concern is I am concerned that using AI decreases my sense of originality", key:["originality"]},
+  {q:"What is dependence concern?", a:"Dependence concern is I am concerned about becoming too dependent on AI for design tasks", key:["too dependent"]},
+  {q:"What is copyright concern?", a:"Copyright concern is I am concerned about copyright issues when using AI for creative work", key:["copyright"]},
+  {q:"What motivates students to use AI?", a:"Students are motivated by speed convenience complementary to traditional learning improves learning and free", key:["speed","convenience"]},
+  {q:"How often do students use AI?", a:"Most students use AI daily or weekly for illustration and design", key:["daily","weekly"]},
+  {q:"How many hours do students use AI?", a:"Most students use AI 1 to 4 hours per week and 1 to 2 hours per day", key:["1 to 4 hours"]},
+  {q:"What devices do students use?", a:"Students typically use desktop laptop computer smartphone and tablet to access AI", key:["desktop","smartphone"]},
+  {q:"What is proficiency of students?", a:"Most students are Beginner to Intermediate in using AI for illustration and design", key:["Intermediate"]},
+  {q:"What percentage is AI generated?", a:"Students report 26 to 50 percent of their designs come from AI and 51 to 75 percent are original", key:["26 to 50"]},
+  {q:"What is your statement of the problem?", a:"My study asks what factors influence students using AI for illustration and design and how it impacts creativity originality and design skills", key:["factors influence"]},
+  {q:"What is your hypothesis?", a:"There is a significant relationship between the 9 variables and intention to use AI for illustration and design", key:["significant relationship"]},
+  {q:"What is your scope?", a:"My scope is 30 LPU Multimedia Arts students using simple regression", key:["30 LPU"]},
+  {q:"What is your limitation?", a:"My limitation is small sample size only Multimedia Arts students and self reported questionnaire", key:["small sample size"]},
+  {q:"Why did you choose Multimedia Arts students?", a:"I chose Multimedia Arts students because they directly use AI for illustration and design in their coursework", key:["Multimedia Arts"]},
+  {q:"How does AI help creativity?", a:"AI helps creativity by helping students come up with new ideas experiment with different design ideas and explore ideas", key:["new ideas","experiment"]},
+  {q:"How does AI help productivity?", a:"AI helps productivity by saving time completing tasks faster and making design process more convenient", key:["saving time"]},
+  {q:"How does AI help learning?", a:"AI helps learning by making learning and practice easier increasing confidence and supporting independent learning", key:["independent learning"]},
+  {q:"What is social influence in your study?", a:"Social influence is my classmates influenced my decision and recommendations from other students encourage me to use AI", key:["classmates influenced"]},
+  {q:"What is your final message?", a:"AI may improve creativity and productivity when used responsibly and with human creativity", key:["improve creativity and productivity"]},
+  {q:"What will you do after defense?", a:"I will revise my thesis based on panel suggestions and continue to use AI responsibly", key:["revise"]},
+];
+
+const SURVEY = [
+  {q:"Survey Q1 UP - AI helps create designs easily?", a:"Artificial Intelligence helps me create designs more easily", key:["create designs more easily"]},
+  {q:"Survey Q2 UP - AI saves time?", a:"Artificial Intelligence saves me time when working on illustration and design projects", key:["saves me time"]},
+  {q:"Survey Q3 CR - AI helps new ideas?", a:"Artificial Intelligence helps me come up with new ideas for my illustration and design projects", key:["new ideas"]},
+  {q:"Survey Q4 UP - AI convenient?", a:"Artificial Intelligence makes the design process more convenient for me", key:["more convenient"]},
+  {q:"Survey Q5 CR - AI improves quality of ideas?", a:"Artificial Intelligence improves the quality of my ideas for illustration and design projects", key:["quality of my ideas"]},
+  {q:"Survey Q6 LS - AI helps limited skills?", a:"Artificial Intelligence helps me create designs even when I have limited design skills", key:["limited design skills"]},
+  {q:"Survey Q7 UP - AI complete faster?", a:"Artificial Intelligence allows me to complete design tasks faster", key:["complete design tasks faster"]},
+  {q:"Survey Q8 DQ - AI helps layouts?", a:"Artificial Intelligence helps me select appropriate layouts and design elements", key:["layouts and design elements"]},
+  {q:"Survey Q9 DQ - AI improves quality?", a:"Artificial Intelligence improves the quality of my designs", key:["quality of my designs"]},
+  {q:"Survey Q10 CR - AI encourages experiment?", a:"Artificial Intelligence encourages me to experiment with different design ideas", key:["experiment"]},
+  {q:"Survey Q11 UP - AI productive?", a:"Artificial Intelligence helps me become more productive when creating visual materials", key:["more productive"]},
+  {q:"Survey Q12 LS - AI makes learning easier?", a:"Artificial Intelligence makes learning and practice easier", key:["learning and practice easier"]},
+  {q:"Survey Q13 LS - AI increases confidence?", a:"Artificial Intelligence increases my confidence in creating designs", key:["increases my confidence"]},
+  {q:"Survey Q14 SI - Classmates influenced?", a:"My classmates influenced my decision to use Artificial Intelligence for illustration and design", key:["classmates influenced"]},
+  {q:"Survey Q15 SI - Recommendations encourage?", a:"Recommendations from other students encourage me to use Artificial Intelligence for design tasks", key:["Recommendations"]},
+  {q:"Survey Q16 CR - AI supports creativity?", a:"Artificial Intelligence supports the development of my creativity and creative thinking", key:["creativity and creative thinking"]},
+  {q:"Survey Q17 LS - AI improves digital literacy?", a:"Artificial Intelligence helps improve my digital literacy and digital competence", key:["digital literacy"]},
+  {q:"Survey Q18 UP - AI complete effectively?", a:"Artificial Intelligence helps me complete my illustration and design tasks more effectively", key:["more effectively"]},
+  {q:"Survey Q19 CR - AI explore ideas?", a:"Artificial Intelligence helps me explore and develop different ideas for my illustration and design projects", key:["explore and develop"]},
+  {q:"Survey Q20 AF - Limited devices challenge?", a:"Limited availability of devices can be a challenge when using Artificial Intelligence", key:["Limited availability"]},
+  {q:"Survey Q21 CR - AI more creative?", a:"Using Artificial Intelligence helps me be more creative when working on illustration and design projects", key:["more creative"]},
+  {q:"Survey Q22 TF - Prefer freehand?", a:"I prefer to use freehand drawing as opposed to Artificial Intelligence", key:["freehand drawing"]},
+  {q:"Survey Q23 AF - AI convenient to access?", a:"Artificial Intelligence is convenient to access when I work on illustration and design tasks", key:["convenient to access"]},
+  {q:"Survey Q24 LS - AI independent learning?", a:"Artificial Intelligence supports my independent learning in illustration and design", key:["independent learning"]},
+  {q:"Survey Q25 CR - Concern originality?", a:"I am concerned that using Artificial Intelligence decreases my sense of originality", key:["decreases my sense of originality"]},
+  {q:"Survey Q26 CR - Concern creativity?", a:"I am concerned that using Artificial Intelligence decreases my creativity", key:["decreases my creativity"]},
+  {q:"Survey Q27 CR - Concern dependence?", a:"I am concerned about becoming too dependent on Artificial Intelligence for design tasks", key:["too dependent"]},
+  {q:"Survey Q28 CR - Concern copyright?", a:"I am concerned about copyright issues when using Artificial Intelligence for creative work", key:["copyright issues"]},
+  {q:"Survey Q29 ET - Disclose AI use?", a:"I always disclose the use of Artificial Intelligence in my illustration and design tasks", key:["always disclose"]},
+  {q:"Survey Q30 UP - Intend to continue?", a:"I intend to continue using Artificial Intelligence for future illustration and design projects", key:["intend to continue"]},
+];
+
+// ============ GAME LOGIC ============
+let currentTab='slides';
+let allData = [...SLIDES, ...QA, ...SURVEY];
+let points=0, correct=0, wrong=0, current=0, quizOrder=[], timerInt=null, timeLeft=30*60, phase="review";
+let lastSpoken="";
+let totalForQuiz = 53;
+
+function getActiveData(){ return currentTab==='slides'?SLIDES : currentTab==='qa'?QA : SURVEY; }
+function setTab(tab, btn){
+  currentTab=tab;
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderReview();
+}
+function normalize(s){ return s.toLowerCase().replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim(); }
+function speak(text, rate=1){
+  try{ speechSynthesis.cancel(); let u=new SpeechSynthesisUtterance(text); u.rate=rate; u.pitch=1.05; u.volume=1; speechSynthesis.speak(u);}catch(e){}
+}
+function speakTyping(val){
+  let words=val.trim().split(" ");
+  let last=words[words.length-1];
+  if(val.endsWith(" ") && last && last!==lastSpoken && last.length>3){ lastSpoken=last; speak(last,1.3); }
+}
+function highlight(text, keys){
+  let h=text;
+  keys.forEach(k=>{ let re=new RegExp(k,"gi"); h=h.replace(re, `<span class="yellow">${k}</span>`); });
+  return h;
+}
+function renderReview(){
+  let data=getActiveData();
+  let box=document.getElementById('reviewBox');
+  box.innerHTML=`<h3>📖 REVIEW MODE - ${currentTab.toUpperCase()} - Kabisaduhin YELLOW | Total ${data.length} items</h3><p style="opacity:.7">Click card para pakinggan. Yellow = sure na itatanong ng panel.</p>`;
+  data.forEach((s,i)=>{
+    box.innerHTML+=`<div class="card-box ${i===current?'active':''}" onclick="current=${i};speakCurrent();renderReview()">
+      <b>${currentTab.toUpperCase()} ${i+1}</b> - ${s.q}<br>
+      <p style="margin:8px 0;line-height:1.65">${highlight(s.a, s.key||[])}</p>
+      <button class="btn2" onclick="event.stopPropagation();speak('${s.a.replace(/'/g,"")}')">🔊 Listen</button>
+      <button class="btn" onclick="event.stopPropagation();current=${i};speakCurrent()">🎯 Focus</button>
+    </div>`;
+  });
+}
+function updateStats(){
+  document.getElementById('points').textContent=points;
+  document.getElementById('correct').textContent=correct;
+  document.getElementById('wrong').textContent=wrong;
+  document.getElementById('prog').textContent=`${correct} / ${totalForQuiz}`;
+  document.getElementById('fill').style.width=(correct/totalForQuiz*100)+"%";
+}
+function startTimer(mins, ph){
+  clearInterval(timerInt); timeLeft=mins*60; phase=ph;
+  document.getElementById('phase').textContent=ph+" MODE";
+  timerInt=setInterval(()=>{
+    timeLeft--; let m=Math.floor(timeLeft/60), s=timeLeft%60;
+    document.getElementById('timer').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    if(timeLeft<=0){ clearInterval(timerInt); if(ph==="REVIEW"){ alert("Time's up! 30 mins Review done! Ngayon Memorization 15 mins! Goodluck!"); startQuiz(); } else finishGame(); }
+  },1000);
+}
+function startReview(){
+  startTimer(30,"REVIEW");
+  document.getElementById('quizBox').style.display='none';
+  document.getElementById('reviewBox').style.display='block';
+  document.getElementById('finalBox').style.display='none';
+  speak("Goodluck for your thesis defense! You have 30 minutes to review. Kabisaduhin mo lahat ng yellow highlighted texts. You can do this!");
+  renderReview();
+}
+function startQuiz(){
+  // Use all 53 Q&A as main quiz - scrambled like panel
+  quizOrder=[...Array(QA.length).keys()].sort(()=>Math.random()-0.5);
+  // Add slides + survey mixed for full 102? Keep 53 for 15 mins - fastest
+  totalForQuiz=QA.length;
+  current=0; points=0; correct=0; wrong=0;
+  startTimer(15,"MEMORIZATION");
+  document.getElementById('reviewBox').style.display='none';
+  document.getElementById('quizBox').style.display='block';
+  document.getElementById('finalBox').style.display='none';
+  speak("Memorization mode started! You have 15 minutes. Panelists will scramble the questions. Goodluck!");
+  showQuizQ();
+}
+function showQuizQ(){
+  if(current>=quizOrder.length){ finishGame(); return; }
+  let idx=quizOrder[current];
+  let s=QA[idx];
+  document.getElementById('qTitle').textContent=`Question ${current+1} / ${QA.length} - Panel Scrambled`;
+  document.getElementById('qPrompt').textContent=s.q;
+  document.getElementById('qMode').textContent=`PANEL QUESTION - Q&A ${idx+1}`;
+  document.getElementById('answerInput').value="";
+  document.getElementById('feedback').innerHTML="";
+  document.getElementById('wordCheck').innerHTML="";
+  document.getElementById('answerInput').focus();
+}
+function speakCurrent(){ let d=getActiveData(); if(d[current]) speak(d[current].a); }
+function speakQuestion(){ let s=QA[quizOrder[current]]; speak(s.q + ". " + s.a); }
+function checkAnswer(){
+  let input=document.getElementById('answerInput');
+  let val=normalize(input.value);
+  let idx=quizOrder[current];
+  let correctAns=normalize(QA[idx].a);
+  let userWords=val.split(" ").filter(w=>w);
+  let ansWords=correctAns.split(" ");
+  let matched=userWords.filter(w=>ansWords.includes(w)).length;
+  let accuracy=ansWords.length?matched/ansWords.length:0;
+  let wordBox=document.getElementById('wordCheck');
+  wordBox.innerHTML=ansWords.map(w=>`<span class="word ${userWords.includes(w)?'done':'wrong'}">${w}</span>`).join(' ');
+  let feedback=document.getElementById('feedback');
+  if(accuracy>=0.6 && val.length>15){
+    points+=100; correct++; input.style.borderColor="#00ff88";
+    feedback.innerHTML=`<p style="color:#00ff88;font-weight:bold">✅ CORRECT! +100 PTS - Accuracy ${Math.round(accuracy*100)}% - Galing! Kabisado mo na!</p>`;
+    speak("Correct! Good job! Kabisado mo na yan!");
+    setTimeout(()=>{ current++; updateStats(); showQuizQ(); }, 1400);
+  } else {
+    points=Math.max(0,points-50); wrong++; input.style.borderColor="#ff3b6b";
+    feedback.innerHTML=`<p style="color:#ff3b6b;font-weight:bold">❌ MALI -50 PTS - Accuracy ${Math.round(accuracy*100)}% - Need pa pagsikapan! Tamang sagot:<br>${QA[idx].a}</p>`;
+    speak("Wrong. Need pa pagsikapan. Ulitin mo.");
+    setTimeout(()=>{ current++; updateStats(); showQuizQ(); }, 3600);
+  }
+  updateStats();
+}
+function skipQ(){ points=Math.max(0,points-20); wrong++; updateStats(); current++; showQuizQ(); }
+function finishGame(){
+  clearInterval(timerInt);
+  document.getElementById('quizBox').style.display='none';
+  let box=document.getElementById('finalBox'); box.style.display='block';
+  let grade = correct>=40 ? "READY FOR DEFENSE! 🔥🔥" : correct>=25 ? "MALAPIT NA! Konting review pa" : "NEED PA PAGSIKAPAN - Review ulit 30 mins";
+  box.innerHTML=`<h2>🏆 FINAL RESULT</h2><p style="font-size:28px">Points: ${points}</p><p>Correct: ${correct} | Wrong: ${wrong} | Accuracy: ${Math.round(correct/53*100)}%</p><h3>${grade}</h3><p>Kapag na-scramble ng panelists yung tanong, kaya mo na sagutin ng tama!</p><button class="btn" onclick="startReview()">Review Ulit 30 Mins</button><button class="btn2" onclick="startQuiz()">Try Again 15 Mins</button>`;
+  speak(`Tapos na! You got ${points} points, ${correct} correct. ${grade}. Goodluck for your thesis defense!`);
+}
+function resetGame(){ clearInterval(timerInt); location.reload(); }
+document.getElementById('answerInput').addEventListener('keydown', e=>{ if(e.key==='Enter') checkAnswer(); });
+renderReview(); updateStats();
+</script>
+</body>
+</html>
